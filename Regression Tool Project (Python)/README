@@ -1,5 +1,7 @@
-1) TP_Final is the executable.
+1) datab.csv and datae.csv are linear and non linear data files
 
-2) LinReg4 provides the parameters of linear regression.
+2) TP_Final is the executable.
 
-3) scatterplot2 draws the tool.
+3) LinReg4 provides the parameters of linear regression.
+
+4) scatterplot2 draws the tool.
