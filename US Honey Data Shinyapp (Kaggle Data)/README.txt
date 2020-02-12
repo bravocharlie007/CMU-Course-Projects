@@ -1,3 +1,4 @@
+Extracted Salient Features from honey production data in US states and displayed them in an interactive shiny web app including a chloropleth map and tidyverse graphs among others.
 
 1) honeydata.csv is the raw kaggle dataset
 
