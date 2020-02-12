@@ -1,0 +1,387 @@
+---
+title: "Final DA Exam — 36-401"
+author: "Charles Gauthey"
+date: "May 7, 2017"
+output: html_document
+---
+
+Load
+```{r}
+bikes = read.table("D:/Documents/CMU Courses/CMU Statistics Courses/Best 36-401/FinalDA3/final-71.txt")
+attach(bikes)
+source("D:/Documents/CMU Courses/CMU Statistics Courses/Best 36-401/FinalDA3/panelfxns(1).R")
+library(plyr)
+library(MASS)
+```
+
+Univariate EDA
+```{r}
+bikes.v2 = apply(bikes, 2, as.numeric)
+apply(bikes.v2, 2, summary)
+apply(bikes.v2, 2, sd)
+apply(bikes, 2, table)
+
+nrow(bikes)
+
+par(mfrow = c(2,4))
+hist(Registered, main = "Registered")
+barplot(table(Month),names.arg=c("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"), main = "Months")
+barplot(table(Day),names.arg=c("Sun","Mon","Tue","Wed","Thu","Fri","Sat"), main = "Day")
+hist(Temp, main = "Temperature (Celsisus)")
+hist(TempFeel, main = "Temperature Feel (Celsius)")
+hist(Humidity, main = "Humidity (%)")
+hist(Windspeed, main = "Windspeed (km/hr)")
+hist(Casual, main = "Casual")
+
+```
+Univariate EDA to-do: Find summary data on Excel and post those. Post the histograms and describe the distributions.
+
+Multivariate EDA
+```{r}
+#Continous EDA
+par(mfrow = c(1,1))
+cont.vars<-cbind(Registered,Month,Day,Hour, Temp,TempFeel,Humidity, Windspeed,Casual)
+colnames(cont.vars)<-c("Registered","Months","Day","Hour","Temperature","TempFeel","Humidity","Windspeed","Casual") 
+pairs(cont.vars,upper.panel=panel.smooth,lower.panel=panel.cor)
+
+#Categorical EDA
+mean(Registered[Year == 2011]);sd(Registered[Year == 2011]) 
+mean(Registered[Year == 2012]);sd(Registered[Year == 2012])
+mean(Registered[Holiday == 0]);sd(Registered[Holiday == 0]) 
+mean(Registered[Holiday == 1]);sd(Registered[Holiday == 1])
+mean(Registered[WorkDay == 0]);sd(Registered[WorkDay == 0]) 
+mean(Registered[WorkDay == 1]);sd(Registered[WorkDay== 1])
+mean(Registered[Weather == 1]);sd(Registered[Weather== 1])
+mean(Registered[Weather == 2]);sd(Registered[Weather == 2]) 
+mean(Registered[Weather == 3]);sd(Registered[Weather == 3]) 
+
+par(mfrow = c(2,2))
+boxplot(Registered~Year,names=c(2011,2012),main = "Registrations Conditioned on Year")
+boxplot(Registered~Holiday,names=c("No","Yes"),main = "Registrations Conditioned on Holiday")
+boxplot(Registered~WorkDay,names=c("No","Yes"),main = "Registrations Conditioned on WorkDay")
+boxplot(Registered~Weather,names=c("Clear","Cloudy","Light Storm"),main = "Registrations Conditioned on Weather")
+
+```
+Multivariate EDA to-do: Post pair plots, boxplots. On Pairs, note the 3-stars ones. Boxplots recieve support from Excel sheet
+
+Initial Modeling
+```{r}
+#Model 1 Basic: Official Categoricals
+mod1.1 = lm(Registered~Year+Month+Day+Hour+Holiday+WorkDay+Weather+Temp+TempFeel+Humidity+Windspeed+Casual)
+
+summary(mod1.1)
+
+mod1.2 = lm(Registered~as.factor(Year)+as.factor(Month)+Day+Hour+Holiday+WorkDay+Weather+Temp+TempFeel+Humidity+Windspeed+Casual)
+summary(mod1.2)
+
+
+Winter = ifelse(Month == 1 | Month == 2 | Month == 12, 1, 0)
+Spring = ifelse(Month == 3 | Month == 4 | Month == 5, 1, 0)
+Summer = ifelse(Month == 6 | Month == 7 | Month == 8, 1, 0)
+Fall = ifelse(Month == 9 | Month == 10 | Month == 11, 1, 0)
+
+#Analyzing splitting Months into seasons
+plot(Month, Registered)
+boxplot(Registered~Winter)
+boxplot(Registered~Spring)
+boxplot(Registered~Summer)
+boxplot(Registered~Fall)
+c(mean(Temp[Month==1]),mean(Temp[Month==2]),mean(Temp[Month==3]),mean(Temp[Month==4]),mean(Temp[Month==5]),mean(Temp[Month==6]),mean(Temp[Month==7]),mean(Temp[Month==8]),mean(Temp[Month==9]),mean(Temp[Month==10]),mean(Temp[Month==11]),mean(Temp[Month==12]) )
+order(c(mean(Temp[Month==1]),mean(Temp[Month==2]),mean(Temp[Month==3]),mean(Temp[Month==4]),mean(Temp[Month==5]),mean(Temp[Month==6]),mean(Temp[Month==7]),mean(Temp[Month==8]),mean(Temp[Month==9]),mean(Temp[Month==10]),mean(Temp[Month==11]),mean(Temp[Month==12]) ))
+
+mod1.3 = lm(Registered~as.factor(Year)+Spring+Summer+Fall+Day+Hour+Holiday+WorkDay+Weather+Temp+TempFeel+Humidity+Windspeed+Casual+Weather*Holiday+WorkDay*Hour)
+summary(mod1.3)
+
+'
+month.colder = ifelse(Month == 1 | Month == 2 | Month == 3 | Month == 4 | Month == 11| Month == 12, 1, 0)
+month.warmer = ifelse(Month == 5 | Month == 6 | Month == 7 | Month == 8 | Month == 9| Month == 10, 1, 0)
+mod1.4  = lm(Registered~as.factor(Year)+month.warmer+Day+Hour+Holiday+WorkDay+Weather+Temp+TempFeel+Humidity+Windspeed+Casual+Weather*Holiday+WorkDay*Hour)
+summary(mod1.4)'
+
+'mod1.5 = lm(Registered~as.factor(Year)+as.factor(Month)+as.factor(Day)+Hour+Holiday+WorkDay+Weather+Temp+TempFeel+Humidity+Windspeed+Casual)
+summary(mod1.5)
+mod1.6 = lm(Registered~as.factor(Year)+as.factor(Month)+as.factor(Day)+Hour+Holiday+Weather+Temp+TempFeel+Humidity+Windspeed+Casual)
+summary(mod1.6)'
+mod1.7 = lm(Registered~as.factor(Year)+Spring+Summer+Fall+Hour+Holiday+as.factor(WorkDay)+Weather+Temp+TempFeel+Humidity+Windspeed+Casual)
+summary(mod1.7)
+
+OffHours.Night = ifelse(Hour == 0 | Hour == 1  | Hour == 2 |Hour == 3 | Hour == 4 |Hour == 5|Hour == 6|Hour == 21|Hour == 22|Hour == 23, 1, 0)
+RushHour.Day = ifelse(Hour == 7 | Hour == 8  | Hour == 9 , 1, 0)
+OffHours.Day = ifelse(Hour == 10 | Hour == 11 | Hour == 12 |Hour == 13 | Hour == 14 |Hour == 15, 1, 0)
+RushHour.Night = ifelse(Hour == 16 | Hour == 17  | Hour == 18|Hour == 19  | Hour == 20 , 1, 0)
+
+
+'mod1.8 = lm(Registered~as.factor(Year)+Spring+Summer+Fall+as.factor(Hour)+as.factor(Holiday)+as.factor(WorkDay)+Weather+Temp+TempFeel+Humidity+Windspeed+Casual)
+summary(mod1.8)'
+
+mod1.9 = lm(Registered~as.factor(Year)+Spring+Summer+Fall+RushHour.Day+OffHours.Day+RushHour.Night+as.factor(Holiday)+as.factor(WorkDay)+Weather+Temp+TempFeel+Humidity+Windspeed+Casual)
+summary(mod1.9)
+
+'mod1.10 = lm(Registered~as.factor(Year)+as.factor(Month)+as.factor(Hour)+as.factor(Holiday)+as.factor(WorkDay)+as.factor(Weather)+Temp+TempFeel+Humidity+Windspeed+Casual)
+summary(mod1.10)'
+```
+First analyze weather Month is ordered or categorical. Noticed a bell-curve, non-linear relationship in our Multivariate EDA. Use as factor. Slightly less stable, but notice the average issue. Could split into seasons (stability), but concept of seasons may be arbitrary. If based on temperatures, below above 50 percentile better. However, takes away from wide range of averages. Sacrifice minimal stability to turn into factors. Conclusion, don't make it ordered (normal categorical).
+
+Day is similar to Month. However, we realize WorkDay variable kind of does a similar function. Causes NA with WorkDay. Issue is factor Day and WorkDay looks at the same thing. WorkDay is more stable. Not much different in information and average coefficients. Conclusion, use WorkDay and take out Day.
+
+Hour factor. Huge range. Big jump in adj- R^2. Categorize, not ordered. Lot of variables, but nto condensed since do not want arbitrary hour pairings (I mean, night, day, afternoon. Too much.)
+
+We leave Weather as ordered. It is not really due to stability, since adjusted R^2 remains the same.  The coefficient does see a noticeable change for Light Storms (3), but that's also due to lower sample size. Order in this case does inherently make sense (worsening scale of weather). Can keep it ordered.
+
+We will not use Date column, since we believe the info is implied in Year, Month, Day sections (inherently).
+
+
+```{r}
+#Model 2 Basic: Interactions
+par(mfrow = c(1,1))
+
+weather.holiday = rep(NA,nrow(bikes))
+weather.holiday[Weather == 1 & Holiday == 0]<-1
+weather.holiday[Weather == 2 & Holiday == 0]<-2
+weather.holiday[Weather == 3 & Holiday == 0]<-3
+weather.holiday[Weather == 1 & Holiday == 1]<-4
+weather.holiday[Weather == 2 & Holiday == 1]<-5
+weather.holiday[Weather == 3 & Holiday == 1]<-6
+boxplot(Registered~weather.holiday,ylab="Registered Bike Riders",names=c("Clear/\nNo Holiday","Cloudy/\nNo Holiday","Light Storm/\nNo Holiday","Clear/\nHoliday","Cloudy/\nHoliday","Light Storm/\nHoliday"))
+abline(v=3.5,lty=2,col=2) 
+title("Conditional Distributions of Registered Riders\nGiven Weather and Holiday")
+
+hour.workday = rep(NA,nrow(bikes))
+hour.workday[WorkDay == 1 & OffHours.Night == 1]<-1
+hour.workday[WorkDay == 0 & OffHours.Night == 1]<-2
+hour.workday[WorkDay == 1 & RushHour.Day == 1]<-3
+hour.workday[WorkDay == 0 & RushHour.Day == 1]<-4
+hour.workday[WorkDay == 1 & OffHours.Day == 1]<-5
+hour.workday[WorkDay == 0 & OffHours.Day == 1]<-6
+hour.workday[WorkDay == 1 & RushHour.Night == 1]<-7
+hour.workday[WorkDay == 0 & RushHour.Night == 1]<-8
+boxplot(Registered~hour.workday,ylab="Registered Bike Riders",names=c("Workday/\nOff-Hours Night","No Workday/\nOff-Hours Night","Workday/\nRush-Hour Day","No Workday/\nRush-Hour Day",
+"Workday/\nOff-Hours Day","No Workday/\nOff-Hours Day","Workday/\nRush-Hour Night","No Workday/\nRush-Hour Night"))
+abline(v=2.5,lty=2,col=2) 
+abline(v=4.5,lty=2,col=2) 
+abline(v=6.5,lty=2,col=2) 
+title("Conditional Distributions of Registered Riders\nGiven Hour and Workday")
+
+'hour.2 = Hour+1
+plot(Hour,Registered,col = (WorkDay+1),xlab="Hours of the Day",ylab="Registered Bike Riders")
+abline(lm(Registered[WorkDay == 0]~Hour[WorkDay == 0]),col=1,lwd=2)
+abline(lm(Registered[WorkDay == 1]~Hour[WorkDay == 1]),col=2,lwd=2)
+
+title("Hour vs. Registered Bike Rides \n Conditioned on Workday")
+legend("topleft",c("Weekend","Workday"),col=c(1,2),lwd=2,pch=16)'
+
+mod2.1 = lm(Registered~as.factor(Year)+Spring+Summer+Fall+RushHour.Day+OffHours.Day+RushHour.Night+as.factor(Holiday)+as.factor(WorkDay)+Weather+Temp+TempFeel+Humidity+Windspeed+Casual+Weather*as.factor(Holiday)+as.factor(WorkDay)*RushHour.Day+as.factor(WorkDay)*OffHours.Day+as.factor(WorkDay)*RushHour.Night)
+summary(mod2.1)
+
+```
+Essay notes:
+Interaction 1: Show graph of weather*holiday. No holiday side shows greater range. Clear*noholiday has a lot of outliers. 
+Interaction 2: Hours definitely not parallel.
+We will use both interactions.
+
+  To-do's:
+Understand boxplot Interactions.
+Edit Interaction graph 2. 
+
+
+Diagnostics: Normality/BoxCox
+```{r}
+#Model 3: Normality/Box Cox
+par(mfrow=c(2,2))
+qqnorm(mod2.1$res,main="Normality: Registered Users")
+qqline(mod2.1$res)
+boxcox1 = boxcox(mod2.1)
+title("Boxcox: Initial Model")
+
+registered2 = Registered^(.4)
+mod3.1 = lm(registered2~as.factor(Year)+Spring+Summer+Fall+RushHour.Day+OffHours.Day+RushHour.Night+as.factor(Holiday)+as.factor(WorkDay)+Weather+Temp+TempFeel+Humidity+Windspeed+Casual+Weather*as.factor(Holiday)+as.factor(WorkDay)*RushHour.Day+as.factor(WorkDay)*OffHours.Day+as.factor(WorkDay)*RushHour.Night)
+qqnorm(mod3.1$res,main="Normality: Transformed Model")
+qqline(mod3.1$res)
+boxcox2 = boxcox(mod3.1)
+title("Boxcox: Transformed Model")
+
+summary(mod3.1)
+```
+Essay Notes:
+Describe prenormality graphs. Boxcox transformation to (.2) causes better treatment of outliers. Very skewed left however.
+
+Outlier Analysis
+```{r}
+#Model 4: Outlier analysis
+X<-cbind(1,as.factor(Year),Spring, Summer, Fall,RushHour.Day,OffHours.Day,RushHour.Night,as.factor(Holiday),as.factor(WorkDay),Weather,Temp,TempFeel,Humidity,Windspeed,Casual,Weather*ifelse(Holiday == 1,1,0),ifelse(WorkDay == 1,1,0)*RushHour.Day,ifelse(WorkDay == 1,1,0)*OffHours.Day,ifelse(WorkDay == 1,1,0)*RushHour.Night)
+  
+H<-X%*%solve(t(X)%*%X)%*%t(X)
+n<-nrow(X);p<-ncol(X)
+SSE<-sum(mod3.1$res^2)
+MSE<-SSE/(n-p)
+res<-mod3.1$res
+del.res<-res*sqrt((n-p-1)/(SSE*(1-diag(H))-res^2))
+alpha<-0.05
+qt(1-alpha/(2*n),n-p-1)
+sort(del.res)[1:10]; sort(del.res)[(n-10):n]
+
+mean.h<-p/n
+which(diag(H)>2*mean.h)
+sort(diag(H))[(n-10):n]
+order(diag(H))[(n-10):n]
+
+#outliers = c(order(diag(H))[(n-5):n], 302, 531)
+outliers = 436
+registered3 = registered2[-outliers]
+Year2 = Year[-outliers]
+Spring2 = Spring[-outliers]
+Summer2 = Summer[-outliers]
+Fall2 = Fall[-outliers]
+Winter2 = Winter[-outliers]
+Hour2 = Hour[-outliers]
+Holiday2 = Holiday[-outliers]
+WorkDay2 = WorkDay[-outliers]
+Weather2 = Weather[-outliers]
+Temp2 = Temp[-outliers]
+TempFeel2 = TempFeel[-outliers]
+Humidity2 = Humidity[-outliers]
+Windspeed2 = Windspeed[-outliers]
+Casual2 = Casual[-outliers]
+OffHours.Night2 = OffHours.Night[-outliers]
+RushHour.Day2 = RushHour.Day[-outliers]
+OffHours.Day2 = OffHours.Day[-outliers]
+RushHour.Night2 = RushHour.Night[-outliers]
+
+
+mod4.1 = lm(registered3~as.factor(Year2)+Spring2+Summer2+Fall2+RushHour.Day2+OffHours.Day2+RushHour.Night2+as.factor(Holiday2)+as.factor(WorkDay2)+Weather2+Temp2+TempFeel2+Humidity2+Windspeed2+Casual2+Weather2*as.factor(Holiday2)+as.factor(WorkDay2)*RushHour.Day2+as.factor(WorkDay2)*OffHours.Day2+as.factor(WorkDay2)*RushHour.Night2)
+qqnorm(mod4.1$res,main="Normality: Transformed/No Outlier Model")
+qqline(mod4.1$res)
+boxcox3 = boxcox(mod4.1)
+title("Boxcox: Transformed/No Outlier Model")
+
+summary(mod4.1)
+
+```
+We have 2 outliers that exceeds threshold for standardized residual of 4.002948 (-5.042947, -4.901155). We have 36 obs that is twice the mean leverage, but there are 6 that are extremely different. However, we noticed these are all holidays, with 4 of them Labor Days. We'll keep these only take out the 2 standardized outliers and of the leverage points, which although a holiday, just has a much higher leverage points than anything else (not even grouped in Labor Day). 3x higher than the next closest.
+
+Further Diagnostics: Residuals
+```{r}
+par(mfrow = c(1,2))
+plot(mod4.1$fitted.values, mod4.1$residuals,main = "Fit vs. Residuals", xlab= "Predicted Registered", ylab= "Residuals")
+abline(h=0,lty=2, col = "red", lwd = 2)
+
+boxplot(mod4.1$res~Year2,names=c(2011,2012),ylab="Residuals", main = "Year vs. Residuals")
+abline(h=0,lty=2, col = "red", lwd = 2)
+
+boxplot(mod4.1$res[Winter2==1],mod4.1$res[Spring2==1],mod4.1$res[Summer2==1],mod4.1$res[Fall2==1],names=c("Winter ","Spring","Summer","Fall"),ylab="Residuals");
+title("Month (Seasons) vs. Residuals")
+abline(h=0,lty=2, lwd= 2, col = "red")
+
+boxplot(mod4.1$res[OffHours.Night2==1],mod4.1$res[RushHour.Day2==1],mod4.1$res[OffHours.Day2==1],mod4.1$res[RushHour.Night2==1],names=c("Off Hours:\nNight ","Rush Hours:\nDay","Off Hours:\nDay","Rush Hours:\nNight"),ylab="Residuals");
+title("Hours vs. Residuals")
+abline(h=0,lty=2, lwd= 2, col = "red")
+
+par(mfrow = c(1,4))
+boxplot(mod4.1$res~Holiday2,names=c("No","Yes"),ylab="Residuals", main = "Holiday vs. Residuals")
+abline(h=0,lty=2, col = "red", lwd = 2)
+
+boxplot(mod4.1$res~WorkDay2,names=c("No","Yes"),ylab="Residuals", main = "Workday vs. Residuals")
+abline(h=0,lty=2, col = "red", lwd = 2)
+
+boxplot(mod4.1$res~Weather2,names=c("Clear","Cloudy","Light Storm"),ylab="Residuals", main = "Weather vs. Residuals")
+abline(h=0,lty=2, col = "red", lwd = 2)
+
+plot(Temp2,mod4.1$residuals, main = "Temperature (Actual) vs. Residuals", xlab = "Temperature", ylab = "Residuals")
+abline(h=0,lty=2, col = "red", lwd = 2)
+
+plot(TempFeel2,mod4.1$residuals, main = "Temperature (Feel) vs. Residuals", xlab = "Temperature", ylab = "Residuals")
+abline(h=0,lty=2, col = "red", lwd = 2)
+
+plot(Humidity2,mod4.1$residuals, main = "Humidity vs. Residuals", xlab = "Humidity", ylab = "Residuals")
+abline(h=0,lty=2, col = "red", lwd = 2)
+
+plot(Windspeed2,mod4.1$residuals, main = "Wind Speed vs. Residuals", xlab = "Wind Speed", ylab = "Residuals")
+abline(h=0,lty=2, col = "red", lwd = 2)
+
+plot(Casual2,mod4.1$residuals, main = "Casual vs. Residuals", xlab = "Casual Riders", ylab = "Residuals")
+abline(h=0,lty=2, col = "red", lwd = 2)
+
+weather.holidayY = Weather2*ifelse(Holiday2 == 1,1,0)
+weather.holidayN = Weather2*ifelse(Holiday2 == 0,1,0)
+boxplot(mod4.1$residuals~weather.holidayY, main = "Weather vs. Residuals \n Given Holiday", ylab= "Residuals", names = c("No Holiday", "Clear","Cloudy"))
+abline(h=0,lty=2, col = "red", lwd = 2)
+boxplot(mod4.1$residuals~weather.holidayN, main = "Weather vs. Residuals \n Given No Holiday", ylab= "Residuals",names = c("Holiday", "Clear","Cloudy", "Light Storm"))
+abline(h=0,lty=2, col = "red", lwd = 2)
+
+OffHourNight.workday = ifelse(WorkDay2 == 1,1,0)*OffHours.Night2
+RushHourDay.workday = ifelse(WorkDay2 == 0,1,0)*RushHour.Day2
+OffHourDay.workday = ifelse(WorkDay2 == 1,1,0)*OffHours.Day2
+RushHourNight.workday = ifelse(WorkDay2 == 0,1,0)*RushHour.Night2
+
+boxplot(mod4.1$residuals~OffHourNight.workday, main = "Off Hour Night vs. Residuals \n Given Workday", ylab= "Residuals", names = c("Other", "Workday/\nOff Hour Night"))
+abline(h=0,lty=2, col = "red", lwd = 2)
+boxplot(mod4.1$residuals~RushHourDay.workday, main = "Rush Hour Day vs. Residuals \n Given Workday", ylab= "Residuals", names = c("Other", "Workday/\nRush Hour Day"))
+abline(h=0,lty=2, col = "red", lwd = 2)
+
+par(mfrow = c(1,3))
+boxplot(mod4.1$residuals~OffHourDay.workday, main = "Off Hour Day vs. Residuals \n Given Workday", ylab= "Residuals", names = c("Other", "Workday/\nOff Hour Day"))
+abline(h=0,lty=2, col = "red", lwd = 2)
+boxplot(mod4.1$residuals~RushHourNight.workday, main = "Rush Hour Night vs. Residuals \n Given Workday", ylab= "Residuals", names = c("Other", "Workday/\nRush Hour Night"))
+abline(h=0,lty=2, col = "red", lwd = 2)
+```
+Generally: Negative resids still more spread out. But constant variance. Due to more frequent negative outliers.
+Humidity: More stratified in higher 
+Windspeed: One outlier with high windspeed. No need for transformation.
+Casual: Many 0's and gradually spread. Higher days, negative residuals. But lack of data.
+Interaction terms: Expectation residual zero some sort of an issue. Goes back to its individual resid issues.
+
+Further Diagnostics: Independence
+```{r}
+
+plot(mod4.1$residuals,xlab= "Index",ylab="Residuals", main="Independence")
+abline(h=0,lty=2,lwd=2, col= "red")
+```
+Good. No pattern.
+
+Final Model Analysis:
+```{r}
+#Model 5: Variable Transformation
+par(mfrow = c(1,1))
+Casual3 = log(Casual2+1)
+mod5.1 = lm(registered3~as.factor(Year2)+Spring2+Summer2+Fall2+RushHour.Day2+OffHours.Day2+RushHour.Night2+as.factor(Holiday2)+as.factor(WorkDay2)+Weather2+Temp2+TempFeel2+Humidity2+Windspeed2+Casual3+Weather2*as.factor(Holiday2)+as.factor(WorkDay2)*RushHour.Day2+as.factor(WorkDay2)*OffHours.Day2+as.factor(WorkDay2)*RushHour.Night2)
+summary(mod5.1)
+plot(Casual3,mod5.1$residuals, main = "Transformed Casual vs. Residuals", xlab = "Casual Riders", ylab = "Residuals")
+abline(h=0,lty=2, col = "red", lwd = 2)
+
+'plot(Windspeed2, mod5.1$residuals)
+Windspeed3 = log(Windspeed2+1)
+plot(Windspeed3, mod5.1$residuals)
+
+mod5.2 = lm(registered3~as.factor(Year2)+Spring2+Summer2+Fall2+as.factor(Hour2)+as.factor(Holiday2)+as.factor(WorkDay2)+Weather2+Temp2+TempFeel2+Humidity2+Windspeed3+Casual3+Weather2*as.factor(Holiday2)+as.factor(WorkDay2)*as.factor(Hour2))
+summary(mod5.2)'
+
+#Model 6: Variable Removal
+mod6.1 = lm(registered3~as.factor(Year2)+Spring2+Summer2+Fall2+RushHour.Day2+OffHours.Day2+RushHour.Night2+as.factor(Holiday2)+as.factor(WorkDay2)+Weather2+Casual3+Weather2*as.factor(Holiday2)+as.factor(WorkDay2)*RushHour.Day2+as.factor(WorkDay2)*OffHours.Day2+as.factor(WorkDay2)*RushHour.Night2+Temp2+TempFeel2+Humidity2+Windspeed2)
+aov(mod6.1)
+summary(mod6.1)
+f1 = ((7.9414+0.9219+0.0497+0.2999)/4)/(1187.2488/702)
+1-pf(f1,4,652)
+#r2.ssr = (0.05661)/(0.05661+0.04569+0.00024+0.00148+17.32803)
+
+#summary(lm(registered3~as.factor(Year2)+as.factor(Month2)+as.factor(Hour2)+as.factor(Holiday2)+as.factor(WorkDay2)+Weather2+Casual3+Weather2*as.factor(Holiday2)+as.factor(WorkDay2)*as.factor(Hour2)+TempFeel2))
+
+#mod6.2 = lm(registered3~as.factor(Year2)+as.factor(Month2)+as.factor(Hour2)+as.factor(WorkDay2)+Casual3+as.factor(WorkDay2)*as.factor(Hour2)+as.factor(Holiday2)+Weather2+Weather2*as.factor(Holiday2))
+
+mod6.2 = lm(registered3~as.factor(Year2)+Spring2+Summer2+Fall2+RushHour.Day2+OffHours.Day2+RushHour.Night2+as.factor(Holiday2)+as.factor(WorkDay2)+Weather2+Casual3+Weather2*as.factor(Holiday2)+as.factor(WorkDay2)*RushHour.Day2+as.factor(WorkDay2)*OffHours.Day2+as.factor(WorkDay2)*RushHour.Night2)
+summary(mod6.2)
+aov(mod6.2)
+
+#mod6.3 = lm(registered3~as.factor(Year2)+as.factor(Month2)+as.factor(Hour2)+as.factor(Holiday2)+as.factor(WorkDay2)+Weather2+Casual3+as.factor(WorkDay2)*as.factor(Hour2))
+#summary(mod6.3)
+
+```
+Casual Rider: Interesting to actually see a positive relationship with transformed registered. Possibly if Casual people want to ride, it is a good day. Motivates registered people to ride. Even if we transform Casual to log(X), we see even more significance, and a more pronounced coefficient. Residual plots look better with transformation, but still positive.
+
+Variable Removal: We do the F-test for aov, which doesn't have significance. Removing all weather (except for actual Weather) from variables. However, this slightly negatively affects R^2 adjusted. However,each variable doesn't add too much anyways to R^2. Simplify the model.
+
+Final Model Analysis: CI
+```{r}
+#alpha level 0.05 throuhgout analysis.
+summary(mod6.2)
+confint(mod6.2)
+```
