@@ -1,0 +1,207 @@
+---
+title: "462Final"
+author: "Charles Gauthey"
+date: "5/12/2018"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r, include=FALSE}
+#setwd("D:/Documents/CMU Statistics Courses/36-462 Data Mining/FinalExam")
+load("TrainData.rdata")
+require(MASS)
+library(gbm)
+library(stats)
+library(pdfCluster)
+y = as.numeric(trainY)
+x = as.matrix(trainX)
+
+df = data.frame(x)
+df$Y = y
+
+sum(y)
+
+```
+
+
+
+##Introduction
+
+
+
+
+#Introduction
+
+To discover if there was any structure in the data, we began with pca, and then moved on to a technique called tsne for visualizing the data. 
+
+After scaling the variables, we ran pca, and the first 2 principal components are shown below
+
+```{r, echo = FALSE}
+
+x = scale(x)
+pca.x = prcomp(x)$x[,1:100]
+
+
+plot(pca.x, col = y + 1)
+
+```
+
+We then moved on to another technique called t-distributed stochastic neighbor embedding, which is a technique for dimensionality reduction that tries to preserve the topology of the underlying data, and at the same time reduce the dimensions. For this we used the tsne library. Below are some visualiziations of the data after applying tsne to reduce to 4 dimensions.
+
+```{r, include = FALSE}
+
+library(tsne)
+
+set.seed(36462)
+x = scale(x)
+ts.x = tsne(x, k = 4, perplexity = 22, initial_dims = 16)
+```
+```{r, echo = FALSE}
+
+
+hc = hclust(d = dist(ts.x), method = 'average')
+
+au = cutree(hc, 2)
+
+
+par(mfrow=c(2,3))
+plot(ts.x[,2] ~ ts.x[,1] , col = y + 1)
+plot(ts.x[,3] ~ ts.x[,1], col = y + 1)
+plot(ts.x[,3] ~ ts.x[,2] , col = y + 1)
+plot(ts.x[,4] ~ ts.x[,1] , col = y + 1)
+plot(ts.x[,4] ~ ts.x[,2], col = y + 1)
+plot(ts.x[,4] ~ ts.x[,3] , col = y + 1)
+
+#table(au,y)
+#adj.rand.index(au, y)
+```
+
+As you can see, several of the plots show a separation between each of the 2 classes.
+
+
+##Unsupervised learning
+
+We looked at 2 ways to do the unsupervised learning. 
+
+We initially began by running PCA on the data set after scaling, and then used that to train a kmeans model with 4 data columns.
+
+Below is a confusion matrix, and a graph of the first 2 columns of the PCA. The shape of the point corresponds to the predicted class label, while the color corresponds to the true class label
+
+```{r, echo = FALSE}
+x = scale(x)
+pca.x = prcomp(x)$x[,1:100]
+
+
+df = data.frame(x1 = pca.x[,1], x2 = pca.x[,2],x3 = pca.x[,3] ,x3 = pca.x[,3], x4 = pca.x[,4])
+# estimated labels
+Predicted = kmeans(df , 2, nstart = 100, iter.max = 100)$cluster
+#IDX3
+# error rate around 5%
+True_Labels = y
+table(Predicted, True_Labels)
+
+plot(pca.x, col = y + 1, pch = Predicted)
+
+print(paste0("Adjusted Rand Index: ", adj.rand.index(Predicted, y)))
+```
+
+We like this technique because it is fairly simple and robust to changes in the size of the dataset. 
+
+
+Our second model, somewhat more creative, used unsupervised random forest based distances to train an average linkage based heirarchical cluster. Because this model got things correct most of the time, but not all of the time, we replicated it 20 times and had them vote on the data points. This makes the model more robust, and illustrates the concept that imperfect learners working together can do a good job creating a better learner. This workes extremely well, and results in the best clustering that we were able to get. We set ntrees to 500 as it was as small a number as we could get without sacrificing the effectiveness of the model. 
+
+```{r}
+
+library(randomForest)
+
+predictions = replicate(20 ,{
+
+  rf = randomForest(~ ., data = x, ntree = 500, proximity = TRUE, oob.prox = TRUE)
+  hc = hclust(d = as.dist(1- rf$proximity), method = 'average')
+  
+  ##Makes it so that the clusters align with eachother to make voting smoother.
+  
+  if(mean(cutree(hc, 2)) > 1.5){
+    -cutree(hc, 2) + 2
+  }
+  else{
+    cutree(hc, 2) - 1
+  }
+  
+}
+)
+print(paste0("Adjusted Rand Index: ", adj.rand.index(rowMeans(predictions) > .25, y)))
+
+```
+
+
+The below graph shows each of the data points, along with the similarity that the random forest has created. You'll notice that there are 2 neighborhoods of similarities, and they correspond pretty well to both the true class (The color of the circle), and the predicted cluster(the border of the circle).
+
+```{r, echo = FALSE}
+library(qgraph)
+
+dist_mi <- randomForest(~ ., data = x, ntree = 500, proximity = TRUE, oob.prox = TRUE)$proximity
+
+qgraph(dist_mi, layout='spring', color = y+1, border.color = (rowMeans(predictions) > .25) + 1,vsize=3, threshold = .05)
+
+```
+
+Supervised Learning
+
+We tried three different supervised learning methods, Lda, GBM and Random Forest. We began with GBM and Random Forest because the models tend to perform well on large data sets, and because they are tree based, can generally handle many factors well. The lda performed noticable worse than the other 2 methods. We tuned the GBM and Random Forest using a grid search and cross validation. We used LDA from mass, and it had an output of a single linear discriminant. When visualized, it actually separated the data out well, but when cross validated, it did not perform as well as hoped. 
+
+```{r, include=FALSE}
+
+y = as.numeric(trainY)
+x = as.matrix(trainX)
+
+df = data.frame(x)
+
+df$Y = y
+
+sum(y)
+
+```
+
+```{r, echo = FALSE}
+
+library(MASS)
+
+# scale x variable
+x = scale(x)
+x = as.matrix(x)
+a = lda(x,y)
+at = a$scaling
+z = x %*% at
+plot( z, col = y + 1,cex=.7,pch=16)
+
+```
+
+For the random forest we ran it on all of the data, without modifying or transforming, as random forest is robust to scale. Below is a plot of the expected error including the oob error. 
+
+```{r, echo = FALSE}
+
+rf = randomForest(factor(Y) ~ ., data = df, mtry = 50, strata = Y,importance = TRUE, ntree = 1000)
+rf
+plot(rf)
+
+
+```
+
+For the gbm we ran it on all of the data, without modifying or transforming, as boosted models are robust to scale. We did weight the importance of the 2 classes, with each Y = 1 observation, being weighted as 5x higher than the Y = 0 observations, to ensure that the unbalanced data did not result in a bad model. With this done, looking at the relative influence, we can see that some variables have much stronger predictive power than others. 
+
+```{r, echo = FALSE}
+
+gb = gbm(Y ~ ., data = df, n.tree = 1000,weights = (df$Y + .25), distribution = "bernoulli")
+
+
+head(summary(gb), 20)
+```
+
+Overall, we chose the parameters for the Random forest and GBM through a grid search. For the Random forest, we modified Mtry and ntree, the number of variables looked at for each tree and the number of trees respectively. We found that changing both of these changed very little, and we settled on 50 for mtry and 1000 for ntry. With the boosted model, we went with a shrinkage parameter of .001 and a ntrees of 1000. Overall, both of these had pretty similar error rates during cross validation.
+
