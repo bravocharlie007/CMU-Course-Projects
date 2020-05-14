@@ -10,3 +10,8 @@ delimitations of each US state along with Honey production statistics per state.
 4) server hosts the server, loads the states.dat csv file and draws all graphs including the Chloropleth map
 
 5) CHLOROPLETH_MAP is init_statedata with a small part of server and does not bring anything else to the table
+
+
+
+
+Link to Published Project: https://bravocharlie.shinyapps.io/InteractiveProject/
